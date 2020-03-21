@@ -1,0 +1,35 @@
+{
+    "settings": {
+        "workbench.colorTheme": "PICO-8 Editor-Only",
+        "editor.fontFamily": "PICO-8 mono upper, Menlo, Monaco, 'Courier New', monospace",
+        "search.exclude": {
+            "backup": true,
+            "bbs": true,
+            "carts": true,
+            "cdata": true,
+            "cstore": true,
+            "plates": true,
+            "config.txt": true,
+            "log.txt": true,
+            "sdl_controllers.txt": true
+        },
+        "files.exclude": {
+            "backup": true,
+            "bbs": true,
+            "carts": true,
+            "cdata": true,
+            "cstore": true,
+            "plates": true,
+            "config.txt": true,
+            "log.txt": true,
+            "sdl_controllers.txt": true
+        },
+        "editor.tabSize": 1,
+        "editor.fontSize": 14
+    },
+    "folders": [
+        {
+            "path": "."
+        }
+    ]
+}

@@ -6,7 +6,7 @@ __lua__
 state_stack = {}
 
 function _init()
- palt(0,false)
+	palt(0,false)
  palt(14,true)
  
  state_stack = {}
