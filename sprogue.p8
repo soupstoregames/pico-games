@@ -7,8 +7,7 @@ state_stack = {}
 
 function _init()
 	reset_pal()
- 
- add(state_stack, state_mission())
+	add(state_stack, state_mission())
 end
 
 function _update()
@@ -16,7 +15,7 @@ function _update()
 end
 
 function _draw()
- cls()
+	cls()
 	for s in all(state_stack) do
 		s:draw()
 	end
@@ -39,7 +38,7 @@ function star()
 			self.x=128*8
 			self.y=rnd(15*8)+8
 			self.speed=rnd(1)
-  end
+		end
 	end
 
 	star.draw=function(self,map_x)
@@ -272,7 +271,7 @@ star_colors={5,5,5,6,6,6,10,12}
 function reset_pal()
 	pal()
 	palt(0,false)
- palt(14,true)
+		palt(14,true)
 end
 
 function is_flipped(f,d)
