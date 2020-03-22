@@ -1,7 +1,7 @@
 {
     "settings": {
         "workbench.colorTheme": "PICO-8 Editor-Only",
-        "editor.fontFamily": "PICO-8 mono upper, Menlo, Monaco, 'Courier New', monospace",
+        "editor.fontFamily": "Menlo, Monaco, 'Courier New', monospace",
         "search.exclude": {
             "backup": true,
             "bbs": true,
