@@ -32,7 +32,7 @@ function star()
 		color=star_colors[flr(rnd(#star_colors))+1],
 	}
 
-	star.update=function(self)
+	function star:update()
 		self.x-=self.speed
 		if self.x < 0 then
 			self.x=128*8
@@ -41,7 +41,7 @@ function star()
 		end
 	end
 
-	star.draw=function(self,map_x)
+	function star:draw(map_x)
 		pset(self.x-map_x*16*8,self.y, self.color)
 	end
 
@@ -51,28 +51,30 @@ end
 function player()
 	local player = {
 		pos=vector(2,7),
-		spr=1,
+		sprite=1,
 		wep=19,
 		flip=false,
+		hp=3,
+		max_hp=4,
 		type=entity_type_player,
 	}
 	
-	player.draw=function(self,map_x)
+	function player:draw(map_x)
 		local p_x=self.pos.x-map_x*16
 		local p_y=self.pos.y+1
 		
-		spr(self.spr,p_x*8,p_y*8,1,1,self.flip) 
+		spr(self.sprite,p_x*8,p_y*8,1,1,self.flip) 
 		spr(self.wep,p_x*8,p_y*8,1,1,self.flip)
 	end
 	
-	player.move=function (self, state, d)
+	function player:move(state,d)
 		-- flip if moved laterally
-		self.flip=is_flipped(self.flip,d)
+		self.flip=flip_sprite(self.flip,d)
 
 		local dest=self.pos:add(d)
 
 		-- check for interacting with entity
-		local target_entity = state:entity_at(dest)
+		local target_entity=state:entity_at(dest)
 		if (target_entity!=nil) return
 
 		-- if tile is blocked
@@ -87,27 +89,68 @@ function player()
 	return player
 end
 
-function charger()
-	local charger = {
-		pos=vector(8,3),
-		spr=115,
-		map_x=0,
+function machine_creep(x,y,sprite)
+	local machine_creep={
+		pos=vector(x,y),
+		sprite=sprite,
 		flip=true,
 		active=true,
-		type=entity_type_enemy,
+		stunned=false,
+		type=entity_type_enemy
 	}
 
-	charger.update=function(self, state)
-		if (state.map_x!=self.map_x) return
+	function machine_creep:draw(map_x)
+		if not self.active then 
+			pal(8, 0)
+			spr(self.sprite,self.pos.x*8,(self.pos.y+1)*8,1,1,self.flip)
+			reset_pal()
+		else
+			spr(self.sprite,self.pos.x*8,(self.pos.y+1)*8,1,1,self.flip)
+		end
+	end
+
+	function machine_creep:update(state)
+		if (not self.active) return
+
+		if self.stunned then
+			self.stunned=false
+			return
+		end
 
 		local player_pos=state.player.pos
 		local distance=self.pos:distance(player_pos)
 		local direction=self.pos:direction(player_pos)
 
-		-- activate?
+		self:_update(state, player_pos, distance, direction)
+	end
 
-		if (not self.active) return
+	return machine_creep
+end
 
+function lancer()
+	local lancer=machine_creep(4,5,97)
+
+	function lancer:_update(state, player_pos, distance, direction)
+		-- attack player
+		if distance == 1 then
+			self.flip=flip_sprite(self.flip,direction)
+			state.player.hp-=1
+			self.stunned=true
+			return
+		end
+		
+		-- move towards player
+		local path = find_path(state, self.pos, player_pos)
+		self.pos = path[1]
+	end
+
+	return lancer
+end
+
+function charger()
+	local charger=machine_creep(8,3,99)
+
+	function charger:_update(state, player_pos, distance, direction)
 		-- run from player?
 		if distance == 1 then
 			local d = direction:scale(-1)
@@ -116,27 +159,21 @@ function charger()
 			if fget(mget(dest.x,dest.y),0) then
 				return
 			end
-			self.flip=is_flipped(self.flip,d)
+			self.flip=flip_sprite(self.flip,d)
 			self.pos=dest
+		end
+
+		if distance < 3 then
+
 		end
 		
 	 -- try to charge player
-		if player_pos:aligned(self.pos) and distance==3 then
+		if player_pos:aligned(self.pos) and distance<=3 then
 			local d = direction:scale(distance-1)
-			self.flip=is_flipped(self.flip,d)
+			self.flip=flip_sprite(self.flip,d)
 			self.pos=self.pos:add(d)
-		end
-	end
-
-	charger.draw=function(self,map_x)
-		if (map_x!=self.map_x) return
-
-		if not self.active then 
-			pal(8, 0)
-			spr(self.spr,self.pos.x*8,(self.pos.y+1)*8,1,1,self.flip)
-			reset_pal()
-		else
-			spr(self.spr,self.pos.x*8,(self.pos.y+1)*8,1,1,self.flip)
+			self.stunned=true
+			state.player.hp-=distance-1
 		end
 	end
 
@@ -148,7 +185,6 @@ end
 
 -- mission
 function state_mission()
-
 	local state = {
 		stars={},
 		player=player(),
@@ -161,10 +197,10 @@ function state_mission()
 		add(state.stars, star())
 	end
 
+	add(state.enemies, lancer())
 	add(state.enemies, charger())
 
-
-	state.update=function(self)
+	function state:update()
 		for s in all(self.stars) do
 				s:update()
 		end
@@ -179,9 +215,12 @@ function state_mission()
 				end
 			end
 		end
+
+		-- check for game over
+			-- if game over then switch state and show score
 	end
 	
-	state.draw=function(self)
+	function state:draw()
 		for s in all(self.stars) do
 				s:draw(self.map_x)
 		end
@@ -194,14 +233,22 @@ function state_mission()
 				e:draw(self.map_x)
 		end
 
+		-- top bar
 		rectfill(0,0,128,7,1)
+
+		local hp,max_hp,x=self.player.hp,self.player.max_hp,10
 		print("hp",2,2,7)
-		spr(33, 10, 0)
-		spr(33, 18, 0)
-		spr(34, 26, 0)
+		for i=0,hp do
+			spr(33, x, 0)
+			x+=8
+		end
+		for i=0,max_hp-hp-1 do
+			spr(34, x, 0)
+			x+=8
+		end
 	end
 
-	state.entity_at=function(self, pos)
+	function state:entity_at(pos)
 		if (self.player.pos:equal(pos)) return self.player
 		for e in all(self.enemies) do
 			if (e.pos:equal(pos)) return e
@@ -218,38 +265,130 @@ end
 
 -->8
 -- maths
-
 function vector(x,y)
 	local v={x=x,y=y}
 
-	v.equal=function(self,v2)
+	function v:equal(v2)
 		return self.x==v2.x and self.y==v2.y
 	end
 
-	v.add=function(self,v2)
+	function v:add(v2)
 		return vector(self.x+v2.x,self.y+v2.y)
 	end
 
-	v.scale=function(self,s)
+	function v:scale(s)
 		return vector(self.x*s,self.y*s)
 	end
 
-	v.aligned=function(self,v2)
+	function v:aligned(v2)
 		if (self.x==v2.x) return true
 		if (self.y==v2.y) return true
 		return false
 	end
 
-	v.distance=function(self,v2)
+	function v:distance(v2)
 		x,y=abs(self.x-v2.x),abs(self.y-v2.y)
 		return sqrt(x*x+y*y)
 	end
 
-	v.direction=function(self,v2)
+	function v:direction(v2)
 		return vector(ordinality(v2.x-self.x),ordinality(v2.y-self.y))
 	end
 
 	return v
+end
+
+-- pathfinding
+function find_path(state,start,goal)
+	local frontier={}
+	insert(frontier,start)
+ local came_from = {}
+ came_from[vec_to_index(start)] = nil
+ local cost_so_far = {}
+ cost_so_far[vec_to_index(start)] = 0
+
+	while (#frontier > 0 and #frontier < 1000) do
+  local current = popEnd(frontier)
+
+  if vec_to_index(current) == vec_to_index(goal) then
+   break
+  end
+
+  local neighbors = get_neighbors(state,current)
+  for next in all(neighbors) do
+   local nextIndex = vec_to_index(next)
+  
+   local new_cost = cost_so_far[vec_to_index(current)]
+
+   if (cost_so_far[nextIndex] == nil) or (new_cost < cost_so_far[nextIndex]) then
+    cost_so_far[nextIndex] = new_cost
+    local priority = new_cost + heuristic(goal, next)
+    insert(frontier, next, priority)
+    
+    came_from[nextIndex] = current
+   end 
+  end
+	end
+
+	printh("find goal..")
+ local current = came_from[vec_to_index(goal)]
+ local path = {}
+ local cindex = vec_to_index(current)
+ local sindex = vec_to_index(start)
+
+ while cindex != sindex do
+  add(path, current)
+  current = came_from[cindex]
+  cindex = vec_to_index(current)
+ end
+ reverse(path)
+
+	return path
+end
+
+function get_neighbors(state,pos)
+	local neighbors={}
+	local x = pos.x%16
+	local y = pos.y
+
+	if x > 0 and not fget(mget(pos.x-1,y),0) then
+		local dest = pos:add(dirs[1])
+		local entity = state:entity_at(dest)
+		if entity == nil or entity.type != entity_type_enemy then
+			add(neighbors,dest)
+		end
+	end
+
+	if x < 15 and not fget(mget(pos.x+1,y),0) then
+		local dest = pos:add(dirs[2])
+		local entity = state:entity_at(dest)
+		if entity == nil or entity.type != entity_type_enemy then
+			add(neighbors,dest)
+		end
+	end
+
+	if y > 0 and not fget(mget(pos.x,y-1),0) then
+		local dest = pos:add(dirs[3])
+		local entity = state:entity_at(dest)
+		if entity == nil or entity.type != entity_type_enemy then
+			add(neighbors,dest)
+		end
+	end
+
+	if y < 15 and not fget(mget(pos.x,y+1),0) then
+		local dest = pos:add(dirs[4])
+		local entity = state:entity_at(dest)
+		if entity == nil or entity.type != entity_type_enemy then
+			add(neighbors,dest)
+		end
+	end
+
+ return neighbors
+end
+
+-- manhattan distance on a square grid
+function heuristic(a, b)
+ return abs(a.x - b.x) + abs(a.y - b.y)
 end
 
 -->8
@@ -274,7 +413,7 @@ function reset_pal()
 		palt(14,true)
 end
 
-function is_flipped(f,d)
+function flip_sprite(f,d)
 	if (d.x<0) return true
 	if (d.x>0) return false
 	return f
@@ -284,6 +423,46 @@ function ordinality(n)
 	if (n==0) return 0
 	if (n==abs(n)) return 1
 	return -1
+end
+
+-- insert into start of table
+function insert(t, val)
+	for i=(#t+1),2,-1 do
+		t[i] = t[i-1]
+	end
+	t[1] = val
+end
+
+-- pop the last element off a table
+function popEnd(t)
+ local top = t[#t]
+ del(t,t[#t])
+ return top
+end
+
+function reverse(t)
+	for i=1,(#t/2) do
+		local temp = t[i]
+		local oppindex = #t-(i-1)
+		t[i] = t[oppindex]
+		t[oppindex] = temp
+	end
+end
+
+-- translate a 2d x,y coordinate to a 1d index and back again
+function vec_to_index(vec)
+	return maptoindex(vec.x,vec.y)
+end
+
+function maptoindex(x, y)
+	return ((x+1) * 16) + y
+end
+
+-- not used
+function indextomap(index)
+ local x = (index-1)/16
+ local y = index - (x*w)
+	return {x,y}
 end
 
 __gfx__
@@ -339,7 +518,7 @@ eeeeeeee000000000000000000000000000000000000000000000000000000000000000000000000
 01111110ee6777eeee15eeeeeee7757eee7887ee000000000000000000000000000000000000000000000000ee55555eeeeeeeeeeeeeeeeeeeeeeeee77700777
 01000010ee7787eee158155eee67787ee167761e000000000000000000000000000000000000000000000000e5bbbb5eeeeeeeeeeeccccee5eeee77e77700777
 01011010e17776eeee567eeeee76777ee106601e000000000000000000000000000000000000000000000000e5bbbb5eeeeeeeeeec1111cee576777677600677
-01011010e6767555ee556eeee67577eee165561e000000000000000000000000000000000000000000000000e555555eeecccceeec1111cee775777666100166
+01011010e6767588ee556eeee67577eee165561e000000000000000000000000000000000000000000000000e555555eeecccceeec1111cee775777666100166
 01000010e16771ee6567777eee155eeee115511e000000000000000000000000000000000000000000000000e507665eec1111ceec1111cee76e566e11000011
 01111110ee6ee6ee1555557ee55e15eeee1111ee000000000000000000000000000000000000000000000000e507665eeecccceeeeccccee5eeeeeee11100111
 00000000ee5ee5eee616161ee5eee5eeeeeeeeee000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee11111111
@@ -347,10 +526,10 @@ eeeeeeee000000000000000000000000000000000000000000000000000000000000000000000000
 00111100eee67eeeee15eeeeeeee7757eeeeeeee000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeee775eee00766700
 01100110ee6777eee158155eeee67787eeeeeeee00000000000000000000000000000000000000000000000066666666eeeeeeeeeeaaaaeeee677eee00611600
 01000010ee7787eeee567eeeeee76777eeeeeeee00000000000000000000000000000000000000000000000010000001eeeeeeeeea9999aeeee56eee00100100
-01000010e1777555ee556eeeee67577eeeeeeeee00000000000000000000000000000000000000000000000010bb0001eeaaaaeeea9999aeee577eee00000000
+01000010e1777588ee556eeeee67577eeeeeeeee00000000000000000000000000000000000000000000000010bb0001eeaaaaeeea9999aeee577eee00000000
 01100110e16771eee567777eee155eeeeeeeeeee00000000000000000000000000000000000000000000000010bb0b01ea9999aeea9999aeee6777ee00700700
 00111100eee6e6ee6555557eee5515eeeeeeeeee00000000000000000000000000000000000000000000000010000001eeaaaaeeeeaaaaeeee6777ee00777700
-00000000eee5e5eee161616eee50005eeeeeeeee00000000000000000000000000000000000000000000000015555551eeeeeeeeeeeeeeeeeee66eee00777700
+00000000eee5e5eee161616eee5eee5eeeeeeeee00000000000000000000000000000000000000000000000015555551eeeeeeeeeeeeeeeeeee66eee00777700
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
