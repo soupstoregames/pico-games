@@ -75,8 +75,15 @@ function player()
 
 		-- check for interacting with entity
 		local target_entity=state:entity_at(dest)
-		if (target_entity!=nil) return
-
+		if target_entity!=nil then
+			if target_entity.type == entity_type_enemy then
+				target_entity.hp-=1
+				if target_entity.hp <= 0 then
+					del(state.enemies, target_entity)
+				end
+				return
+			end
+		end
 		-- if tile is blocked
 		if fget(mget(dest.x,dest.y),0) then
 			return
@@ -89,17 +96,20 @@ function player()
 	return player
 end
 
-function machine_creep(x,y,sprite)
+function machine_creep(x,y,sprite,hp)
 	local machine_creep={
 		pos=vector(x,y),
 		sprite=sprite,
 		flip=true,
+		hp=hp,
 		active=true,
 		stunned=false,
 		type=entity_type_enemy
 	}
 
 	function machine_creep:draw(map_x)
+		if (map_x != flr(self.pos.x/16)) return
+
 		if not self.active then 
 			pal(8, 0)
 			spr(self.sprite,self.pos.x*8,(self.pos.y+1)*8,1,1,self.flip)
@@ -117,6 +127,8 @@ function machine_creep(x,y,sprite)
 			return
 		end
 
+		if (state.map_x != flr(self.pos.x/16)) return
+
 		local player_pos=state.player.pos
 		local distance=self.pos:distance(player_pos)
 		local direction=self.pos:direction(player_pos)
@@ -128,7 +140,7 @@ function machine_creep(x,y,sprite)
 end
 
 function lancer()
-	local lancer=machine_creep(4,5,97)
+	local lancer=machine_creep(4,6,97,1)
 
 	function lancer:_update(state, player_pos, distance, direction)
 		-- attack player
@@ -148,7 +160,7 @@ function lancer()
 end
 
 function charger()
-	local charger=machine_creep(8,3,99)
+	local charger=machine_creep(8,3,99,2)
 
 	function charger:_update(state, player_pos, distance, direction)
 		-- run from player?
@@ -161,10 +173,6 @@ function charger()
 			end
 			self.flip=flip_sprite(self.flip,d)
 			self.pos=dest
-		end
-
-		if distance < 3 then
-
 		end
 		
 	 -- try to charge player
