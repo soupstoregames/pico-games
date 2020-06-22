@@ -1,7 +1,8 @@
 pico-8 cartridge // http://www.pico-8.com
 version 18
 __lua__
--- main
+-- sprogue (wip)
+-- by soupstoregames
 
 state_stack = {}
 
@@ -187,26 +188,18 @@ function charger(x,y)
 	local charger=machine_creep(x,y,116,2)
 
 	function charger:_update(state, player_pos, distance, direction)
-		-- run from player?
-		if distance == 1 then
-			local d = direction:scale(-1)
-			-- if tile is blocked
-			local dest = self.pos:add(d)
-			if fget(mget(dest.x,dest.y),0) then
-				return
-			end
-			self.flip=flip_sprite(self.flip,d)
-			self.pos=dest
-		end
+		if (flee(self, distance, direction)) return
 		
-	 -- try to charge player
-		if player_pos:aligned(self.pos) and distance<=3 then
-			local d = direction:scale(distance-1)
-			self.flip=flip_sprite(self.flip,d)
-			self.pos=self.pos:add(d)
+		if charge(self, player_pos, distance, direction) then
 			self.stunned=true
 			state.player.hp-=distance-1
+			return
 		end
+		
+		if (align(self, player_pos, direction)) return
+
+		local path = find_path(state, self.pos, player_pos)
+		self.pos = path[1]
 	end
 
 	return charger
@@ -315,6 +308,51 @@ end
 -->8
 
 -->8
+function tile_is_blocked(pos)
+	return fget(mget(pos.x,pos.y),0)
+end
+
+function flee(actor, distance, direction)
+	if (distance != 1) return false
+
+	local d = direction:scale(-1)
+
+	-- if tile is blocked
+	local dest = actor.pos:add(d)
+	if tile_is_blocked(dest) then
+		return false
+	end
+
+	actor.flip=flip_sprite(actor.flip,d)
+	actor.pos=dest
+
+	return true
+end
+
+function charge(actor, player_pos, distance, direction)
+	if (not player_pos:aligned(actor.pos) or distance>3) return false
+	
+	local d = direction:scale(distance-1)
+	actor.flip=flip_sprite(actor.flip,d)
+	actor.pos=actor.pos:add(d)
+
+	return true
+end
+
+function align(actor, player_pos, direction)
+	local dest = actor.pos:add(direction)
+	if dest.x == player_pos.x and not fget(mget(dest.x,actor.pos.y),0) then
+		dest.y = actor.pos.y
+		actor.flip=flip_sprite(actor.flip,direction)
+		actor.pos=dest
+		return
+	elseif dest.y == player_pos.y and not fget(mget(actor.pos.x,dest.y),0) then
+		dest.x = actor.pos.x
+		actor.flip=flip_sprite(actor.flip,direction)
+		actor.pos=dest
+		return
+	end
+end
 
 -->8
 -- maths
