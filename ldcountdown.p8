@@ -4,9 +4,13 @@ __lua__
 -- ld countdown
 -- by soupstoregames
 
+day=5
+hour=23
+
 function _init()
-	end_time=23*60
-	end_time+=5*24*60
+	end_time=hour*60
+	end_time+=day*24*60
+	end_time-=1
 end
 
 
@@ -17,7 +21,7 @@ function _update()
 	
 	delta=end_time-t
 	 
-	secs=60-stat(95)
+	secs=60-stat(95)-1
 	mins=flr(delta%60)
 	delta/=60
 	hours=flr(delta%24)
