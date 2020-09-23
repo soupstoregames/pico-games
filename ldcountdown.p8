@@ -4,6 +4,7 @@ __lua__
 -- ld countdown
 -- by soupstoregames
 
+done=false
 day=5
 hour=23
 
@@ -15,11 +16,19 @@ end
 
 
 function _update()
+	if done then
+		return
+	end
+	
 	t=stat(94) //mins
 	t+=stat(93)*60 //hrs
 	t+=stat(92)*24*60 //days
 	
 	delta=end_time-t
+	if delta<0 then
+		done=true
+		return
+	end
 	 
 	secs=60-stat(95)-1
 	mins=flr(delta%60)
@@ -33,10 +42,20 @@ end
 cols={}
 function _draw()
 	cls()
-	print(pad(days),0,1,12)
-	print(pad(hours),9,1,11)
-	print(pad(mins),0,10,9)
-	print(pad(secs),9,10,8)
+	
+	if done and stat(95)%2==0 then
+		return
+	end
+	
+	if done then
+		print("time",0,2,8)
+		print(" up ",0,9,8)
+	else
+		print(pad(days),0,1,12)
+		print(pad(hours),9,1,11)
+		print(pad(mins),0,10,9)
+		print(pad(secs),9,10,8)
+	end
 
 	for y=0,15 do
 		cols[y]={}
