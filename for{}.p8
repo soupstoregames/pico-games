@@ -499,6 +499,15 @@ function state_game()
 	function state:draw(top)
 		cls()
 		
+		
+		
+		if info_text[level] != nil then
+			local text=info_text[level]
+				for i=1,#text[4] do
+					print(text[4][i],text[1],text[2]+(i-1)*7,text[3])
+				end
+		end
+		
 		-- draw level
 		for y=0,map_size-1 do
 			for x=0,map_size-1 do
@@ -515,7 +524,10 @@ function state_game()
 				pal()
 				set_palette()
 			else
+				pal(10,0)
 				draw_sprite(a.sprite,a.pos,vector(0,0))
+				pal()
+				set_palette()
 			end
 		end
 		
@@ -538,32 +550,35 @@ function state_game()
 			p:draw()
 		end
 		
+		-- draw doors
+		if self.show_doors then
+			for d in all(self.doors) do
+				draw_sprite(door_spr,d,vector(0,0))
+			end
+		else
+			pal(10,0)
+			pal(11,12)
+			for d in all(self.doors) do
+				draw_sprite(door_spr,d,vector(0,0))
+			end
+			pal()
+			set_palette()
+		end
+		
 		-- draw blocks
 		for b in all(self.blocks) do
 			draw_sprite(b.sprite,b.pos,b.mpos)
 		end
+		
+		
 				
 		-- draw player
 		if not self.player.dead then
 			self.player:draw()
 		end
 		
-		-- draw doors
-		if self.show_doors then
-			for d in all(self.doors) do
-				draw_sprite(door_spr,d,vector(0,0))
-			end
-		end
-		
 		for e in all(self.explosions) do
 			e:draw()
-		end
-		
-		if info_text[level] != nil then
-			local text=info_text[level]
-				for i=1,#text[4] do
-					print(text[4][i],text[1],text[2]+(i-1)*7,text[3])
-				end
 		end
 		
 		if top then
