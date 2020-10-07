@@ -1,6 +1,9 @@
 pico-8 cartridge // http://www.pico-8.com
 version 29
 __lua__
+-- for {}
+-- by soupstoregames
+
 state_stack = {}
 frame=0
 last_time=t()
@@ -128,6 +131,9 @@ levels={
 	lvl_ready,
 }
 
+cc={12,3,5,19}
+cheat_code={}
+
 function state_menu()
 	local state = {}
 		
@@ -163,6 +169,29 @@ function state_menu()
 		if btnp(🅾️) then
 			if levels[level] != lvl_locked then
 				add(state_stack, state_game(level-1))
+			end
+		end
+		
+		if btnp(❎) then
+			add(cheat_code,level)
+			if #cheat_code>4 then
+				del(cheat_code,cheat_code[1])
+			end
+			if #cheat_code == 4 then
+				local unlock_all=true
+				for i=1,#cheat_code do
+					if cheat_code[i]!=cc[i] then
+						unlock_all=false
+					end
+				end
+				if unlock_all then
+					for i=1,#levels do
+						if levels[i]==lvl_locked then
+							levels[i]=lvl_ready
+							dset(i,levels[i])
+						end
+					end
+				end
 			end
 		end
 	end
@@ -777,8 +806,10 @@ function state_win(steps)
 	dset(level,levels[level])
 	
 	if level < 24 then
-		levels[level+1]=lvl_ready
-		dset(level+1,levels[level+1])
+		if levels[level+1]==level_lvl_locked then
+			levels[level+1]=lvl_ready
+			dset(level+1,levels[level+1])
+		end
 		
 		level= level+1
 		dset(0,level)
